@@ -40,8 +40,14 @@ type cqHostConfig struct {
 	VolumesFrom     string
 }
 
+type cqPort struct {
+	HostIp   string
+	HostPort string
+}
+
 type cqNetworkSettings struct {
 	IPAddress string
+	Ports     map[string][]cqPort
 }
 
 type cqState struct {
@@ -62,6 +68,8 @@ type cqContainer struct {
 	Name            string
 	NetworkSettings cqNetworkSettings
 	State           cqState
+	Volumes         map[string]string
+	VolumesRW       map[string]bool
 }
 
 /*

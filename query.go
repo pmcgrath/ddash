@@ -11,8 +11,22 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 )
+
+type port struct {
+	Container int
+	Host      int
+	Type      string
+}
+
+type volume struct {
+	Container string
+	Host      string
+	ReadWrite bool
+}
 
 type container struct {
 	CreatedAt                      time.Time
@@ -27,12 +41,15 @@ type container struct {
 	NetworkMode                    string
 	Paused                         bool
 	Pid                            int
+	Ports                          []*port
 	PublishAllPorts                bool
 	Restarting                     bool
 	RestartPolicyMaximumRetryCount int
 	RestartPolicyName              string
 	Running                        bool
+	ShortId                        string
 	StartedAt                      time.Time
+	Volumes                        []*volume
 	VolumesFrom                    string
 }
 
@@ -101,6 +118,37 @@ func getContainer(queryer dockerQueryer, id string) (bool, *container, error) {
 		return false, nil, err
 	}
 
+	ports := make([]*port, len(containerDetail.NetworkSettings.Ports))
+	index := 0
+	for key, sourcePort := range containerDetail.NetworkSettings.Ports {
+		keyParts := strings.Split(key, "/")
+		portContainer, _ := strconv.Atoi(keyParts[0])
+		portType := keyParts[1]
+		portHost := 0
+		if len(sourcePort) > 0 {
+			portHost, _ = strconv.Atoi(sourcePort[0].HostPort)
+		}
+
+		ports[index] = &port{
+			Container: portContainer,
+			Host:      portHost,
+			Type:      portType,
+		}
+		index++
+	}
+
+	volumes := make([]*volume, len(containerDetail.Volumes))
+	index = 0
+	for key, value := range containerDetail.Volumes {
+		readWrite := containerDetail.VolumesRW[key]
+		volumes[index] = &volume{
+			Container: key,
+			Host:      value,
+			ReadWrite: readWrite,
+		}
+		index++
+	}
+
 	container := &container{
 		DomainName:                     containerDetail.Config.Domainname,
 		ExitCode:                       containerDetail.State.ExitCode,
@@ -109,16 +157,19 @@ func getContainer(queryer dockerQueryer, id string) (bool, *container, error) {
 		Id:                             containerDetail.Id,
 		Image:                          containerDetail.Image,
 		IPAddress:                      containerDetail.NetworkSettings.IPAddress,
-		Name:                           containerDetail.Name,
+		Name:                           containerDetail.Name[1:], // Strip "/" prefix
 		NetworkMode:                    containerDetail.HostConfig.NetworkMode,
 		Paused:                         containerDetail.State.Paused,
 		Pid:                            containerDetail.State.Pid,
+		Ports:                          ports,
 		PublishAllPorts:                containerDetail.HostConfig.PublishAllPorts,
 		Restarting:                     containerDetail.State.Restarting,
 		RestartPolicyMaximumRetryCount: containerDetail.HostConfig.RestartPolicy.MaximumRetryCount,
 		RestartPolicyName:              containerDetail.HostConfig.RestartPolicy.Name,
 		Running:                        containerDetail.State.Running,
+		ShortId:                        containerDetail.Id[:12], // First 12 chars
 		StartedAt:                      parseTimestamp(containerDetail.State.StartedAt),
+		Volumes:                        volumes,
 		VolumesFrom:                    containerDetail.HostConfig.VolumesFrom,
 	}
 	log.Printf("getContainer: Completed getting for Id: %s\n", id)

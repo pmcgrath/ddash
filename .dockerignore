@@ -1,0 +1,8 @@
+# SCM
+.git
+
+# Sources
+*.go
+
+# Markdown
+*.md

@@ -59,7 +59,7 @@ func (self *eventDistributor) Run(queryer dockerQueryer) {
 
 		disconnectedSubscribers := make([]*subscriber, 0)
 		for _, subscriber := range self.Subscribers {
-			log.Printf("Run: Sending event to %s\n", self.Connection.Request().RemoteAddr)
+			log.Printf("Run: Sending event to %s\n", subscriber.Connection.Request().RemoteAddr)
 			if err := websocket.JSON.Send(subscriber.Connection, event); err != nil {
 				log.Printf("Run: Send error: %s\n", err)
 				switch err.(type) {

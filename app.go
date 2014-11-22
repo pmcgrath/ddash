@@ -1,24 +1,28 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"runtime"
 
 	"code.google.com/p/go.net/websocket"
 )
 
 var (
-	host       string
-	port       int
-	dockerHost string
-	queryer    dockerQueryer
+	dockerHost      = flag.String("dockerhost", DOCKER_DEFAULT_HOST, "Docker host")
+	applicationPort = flag.Int("port", 8090, "Port")
+
+	queryer dockerQueryer
 )
 
 func init() {
-	port = 8080
-	dockerHost = DOCKER_DEFAULT_HOST
-	queryer = newDockerQueryer(dockerHost)
+	flag.Parse()
+
+	queryer = newDockerQueryer(*dockerHost)
 }
 
 func containerHandler(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +32,8 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := ""
+	startIndex := len("/containers/")
+	id := r.URL.Path[startIndex:]
 
 	found, data, err := getContainerRaw(queryer, id)
 	if !found {
@@ -42,7 +47,22 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, string(data))
+	var jsonMap map[string]interface{}
+	if err := json.Unmarshal(data, &jsonMap); err != nil {
+		log.Printf("containerHandler: Convert to json map for id: %s error: %s", id, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	indentedData, err := json.MarshalIndent(jsonMap, "", "    ")
+	if err != nil {
+		log.Printf("containerHandler: Convert to indented json for id: %s error: %s", id, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, string(indentedData))
 }
 
 func containersHandler(w http.ResponseWriter, r *http.Request) {
@@ -89,5 +109,14 @@ func main() {
 	http.HandleFunc("/containers/", containerHandler)
 	http.Handle("/events", websocket.Handler(eventsHandler))
 
-	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	addr := fmt.Sprintf(":%d", *applicationPort)
+	log.Printf("Using %s\n", runtime.Version())
+	log.Printf("About to listen at %s", addr)
+	err := http.ListenAndServe(addr, nil)
+	if err != nil {
+		log.Fatalf("Listen and server error : %s", err)
+		os.Exit(1)
+	}
+
+	os.Exit(0)
 }
