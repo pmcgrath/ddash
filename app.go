@@ -35,34 +35,27 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 	startIndex := len("/containers/")
 	id := r.URL.Path[startIndex:]
 
-	found, data, err := getContainerRaw(queryer, id)
+	found, container, err := getContainer(queryer, id)
 	if !found {
 		log.Printf("containerHandler: Container not found for id: %s", id, err)
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 	if err != nil {
-		log.Printf("containerHandler: Get container raw error for id: %s error: %s", id, err)
+		log.Printf("containerHandler: Get container error for id: %s error: %s", id, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var jsonMap map[string]interface{}
-	if err := json.Unmarshal(data, &jsonMap); err != nil {
-		log.Printf("containerHandler: Convert to json map for id: %s error: %s", id, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	indentedData, err := json.MarshalIndent(jsonMap, "", "    ")
+	containerAsJsonData, err := json.MarshalIndent(container, "", "    ")
 	if err != nil {
-		log.Printf("containerHandler: Convert to indented json for id: %s error: %s", id, err)
+		log.Printf("containerHandler: Convert to json data error for id: %s error: %s", id, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, string(indentedData))
+	fmt.Fprintf(w, string(containerAsJsonData))
 }
 
 func containersHandler(w http.ResponseWriter, r *http.Request) {
@@ -74,17 +67,24 @@ func containersHandler(w http.ResponseWriter, r *http.Request) {
 
 	containers, err := getContainers(queryer)
 	if err != nil {
-		log.Printf("containersHandler: Get containers errorr: %s", err)
+		log.Printf("containersHandler: Get containers error: %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	containersAsJsonData, err := json.Marshal(containers)
+	if err != nil {
+		log.Printf("containersHandler: Convert to json data error: %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	pageInfo := struct {
-		SocketPath string
-		Containers []*container
+		SocketPath       string
+		ContainersAsJson string
 	}{
 		"/events",
-		containers,
+		string(containersAsJsonData),
 	}
 
 	err = containersTemplate.Execute(w, pageInfo)
