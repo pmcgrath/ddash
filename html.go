@@ -42,6 +42,17 @@ const containersHtmlTemplate = `
             var uri = "ws://" + window.location.host + "{{.SocketPath}}";
             var containers = JSON.parse('{{.ContainersAsJson}}');
 
+            function getStatus(input) {
+                if (!input.State.Running) {
+                    return "stopped";
+                }
+                if (input.State.Paused) {
+                    return "paused";
+                }
+
+                return "running";
+            }
+
             function getTimestamp(input) {
                     // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat
                     var options = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" };
@@ -54,6 +65,9 @@ const containersHtmlTemplate = `
                 for (var index = 0; index < containers.length; index++) {
                     var container = containers[index];
 
+                    var shortId = container.Id.substring(0, 12);
+                    var containerUrl = "/containers/" + container.Id;
+                    var status = getStatus(container);
                     var started = getTimestamp(container.State.StartedAt);
                     var finished = getTimestamp(container.State.FinishedAt);
 
@@ -63,25 +77,27 @@ const containersHtmlTemplate = `
                     }
 
                     var ports = "";
-		    for (var containerPort in container.NetworkSettings.Ports) {
+                    for (var containerPort in container.NetworkSettings.Ports) {
                         var portSetting = container.NetworkSettings.Ports[containerPort];
-			if (portSetting != null) {
+                        if (portSetting != null) {
                             ports += portSetting[0].HostPort + "->"; 
                         }
                         ports += containerPort + "<br/>" 
                     }
 
                     var volumes = "";
-		    for (var containerPath in container.Volumes) {
+                    for (var containerPath in container.Volumes) {
                         volumes += containerPath + " : " + container.Volumes[containerPath] + "<br/>" 
                     }
 
                     var containersElement = document.getElementById("containers");
                     var template = document.querySelector("#containerTemplate");
                     var content = document.importNode(template.content, true);
-                    content.querySelector(".id").innerText = container.Id;
+                    content.querySelector(".id").href = containerUrl;
+                    content.querySelector(".id").innerText = shortId;
                     content.querySelector(".name").innerText = container.Name;
                     content.querySelector(".pid").innerText = container.State.Pid;
+                    content.querySelector(".pid").className += ' ' + status;
                     content.querySelector(".started").innerText = started;
                     content.querySelector(".finished").innerText = finished;
                     content.querySelector(".restart-policy").innerText = restartPolicy;
@@ -133,9 +149,9 @@ const containersHtmlTemplate = `
         </div>
         <template id="containerTemplate">
             <div class="row">
-                <div class="cell id"></div>
+                <div class="cell"><a href="" class="id"></a></div>
                 <div class="cell name"></div>
-                <div class="cell pid"></div>
+                <div class="cell pid status"></div>
                 <div class="cell started"></div>
                 <div class="cell finished"></div>
                 <div class="cell restart-policy"></div>
