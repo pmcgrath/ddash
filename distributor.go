@@ -1,5 +1,8 @@
 package main
 
+// See
+// http://crosbymichael.com/docker-events.html
+// https://github.com/docker/docker/blob/master/utils/jsonmessage.go
 import (
 	"log"
 	"net"
@@ -8,13 +11,15 @@ import (
 	"code.google.com/p/go.net/websocket"
 )
 
+type event map[string]interface{}
+
 var (
-	eventChannel chan dEvent
+	eventChannel chan event
 	eventDistr   *eventDistributor
 )
 
 func init() {
-	eventChannel = make(chan dEvent)
+	eventChannel = make(chan event)
 
 	eventDistr = &eventDistributor{
 		Incomming:   eventChannel,
@@ -29,7 +34,7 @@ type subscriber struct {
 
 type eventDistributor struct {
 	Mutex       sync.Mutex
-	Incomming   <-chan dEvent
+	Incomming   <-chan event
 	Subscribers []*subscriber
 }
 

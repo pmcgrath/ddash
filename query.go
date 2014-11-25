@@ -13,7 +13,13 @@ import (
 	"log"
 )
 
-func getContainers(queryer dockerQueryer) ([]map[string]interface{}, error) {
+type sourceContainers []map[string]interface{}
+
+type container map[string]interface{}
+
+type containers []container
+
+func getContainers(queryer dockerQueryer) (containers, error) {
 	log.Println("getContainers: About to get containers list")
 	containers_url := "/containers/json?all=1"
 
@@ -37,13 +43,13 @@ func getContainers(queryer dockerQueryer) ([]map[string]interface{}, error) {
 		return nil, fmt.Errorf(message)
 	}
 
-	var sourceContainers []map[string]interface{}
+	var sourceContainers sourceContainers
 	if err := json.Unmarshal(data, &sourceContainers); err != nil {
 		log.Printf("getContainers: Unmarshal source containers error: %s\n", err)
 		return nil, err
 	}
 
-	containers := make([]map[string]interface{}, len(sourceContainers))
+	containers := make(containers, len(sourceContainers))
 	for index, sourceContainer := range sourceContainers {
 		id := sourceContainer["Id"].(string)
 		log.Printf("getContainers: About to get container with Id: %s\n", id)
@@ -65,7 +71,7 @@ func getContainers(queryer dockerQueryer) ([]map[string]interface{}, error) {
 	return containers, nil
 }
 
-func getContainer(queryer dockerQueryer, id string) (bool, map[string]interface{}, error) {
+func getContainer(queryer dockerQueryer, id string) (bool, container, error) {
 	log.Printf("getContainer: About to get for Id: %s\n", id)
 	container_url := fmt.Sprintf("containers/%s/json", id)
 
@@ -95,7 +101,7 @@ func getContainer(queryer dockerQueryer, id string) (bool, map[string]interface{
 		return false, nil, fmt.Errorf(message)
 	}
 
-	var container map[string]interface{}
+	var container container
 	if err := json.Unmarshal(data, &container); err != nil {
 		log.Printf("getContainer: Unmarshall error for id: %s error: %s", id, err)
 		return false, nil, err
@@ -104,7 +110,7 @@ func getContainer(queryer dockerQueryer, id string) (bool, map[string]interface{
 	return true, container, nil
 }
 
-func watchForEvents(queryer dockerQueryer, outgoing chan<- dEvent) {
+func watchForEvents(queryer dockerQueryer, outgoing chan<- event) {
 	log.Println("watchForEvents: About to start watching")
 	events_url := "events"
 
@@ -118,7 +124,7 @@ func watchForEvents(queryer dockerQueryer, outgoing chan<- dEvent) {
 		log.Fatalf("watchForEvents: Non 200 returned: %d", resp.StatusCode)
 	}
 
-	var event dEvent
+	var event event
 	decoder := json.NewDecoder(resp.Body)
 	for {
 		if err := decoder.Decode(&event); err != nil {
