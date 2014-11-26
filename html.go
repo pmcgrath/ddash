@@ -60,7 +60,8 @@ const rootHtmlTemplate = `
 
             function addContainer(container) {
                 var shortId = container.Id.substring(0, 12);
-                var containerUrl = "/containers/" + container.Id;
+                var name = container.Name.substring(1, container.Name.length -1); 
+                var containerUrl = containerUrlPrefix + container.Id;
                 var status = getContainerStatus(container);
                 var started = getTimestamp(container.State.StartedAt);
                 var finished = getTimestamp(container.State.FinishedAt);
@@ -86,18 +87,23 @@ const rootHtmlTemplate = `
                 var template = document.querySelector("#containerTemplate");
                 var content = document.importNode(template.content, true);
                 content.querySelector(".id").href = containerUrl;
-                content.querySelector(".id").innerText = shortId;
-                content.querySelector(".name").innerText = container.Name;
-                content.querySelector(".pid").innerText = container.State.Pid;
+                content.querySelector(".id").textContent = shortId;
+                content.querySelector(".name").textContent = name;
+                content.querySelector(".pid").textContent = container.State.Pid;
                 content.querySelector(".pid").className += ' ' + status;
-                content.querySelector(".started").innerText = started;
-                content.querySelector(".finished").innerText = finished;
-                content.querySelector(".restart-policy").innerText = restartPolicy;
-                content.querySelector(".volumes-from").innerText = container.HostConfig.VolumesFrom;
+                content.querySelector(".started").textContent = started;
+                content.querySelector(".finished").textContent = finished;
+                content.querySelector(".restart-policy").textContent = restartPolicy;
+                content.querySelector(".volumes-from").textContent = container.HostConfig.VolumesFrom;
                 content.querySelector(".ports").innerHTML = ports;
                 content.querySelector(".volumes").innerHTML = volumes;
 
                 containersElement.appendChild(content);
+            }
+
+            function setConnectionStatus(connected) {
+                var connectionStatusElement = document.getElementById("connectionStatus");
+                connectionStatusElement.textContent = connected;
             }
 
             function rePopulateContainersView(containers) {
@@ -110,6 +116,9 @@ const rootHtmlTemplate = `
                 for (var index = 0; index < containers.length; index++) {
                     addContainer(containers[index]);
                 }
+                
+                var lastPopulationElement = document.getElementById("lastPopulation");
+                lastPopulationElement.textContent = new Date();
             }
             
             function getData(url, completionFunc, errorFunc) {
@@ -139,6 +148,7 @@ const rootHtmlTemplate = `
    
                 eventsSocket.onopen = function() {
                     console.log("WebSocket: Connected to " + eventsSocket.url);
+                    setConnectionStatus(true);
                     if (eventsSocketRetryAttempts > 0) {
                         console.log("Repopulating views due to socket connection being reopened, attempt sequence " + eventsSocketRetryAttempts);
                         rePopulateViews();
@@ -152,7 +162,9 @@ const rootHtmlTemplate = `
                     eventsSocket.onclose = null;
                     eventsSocket.onerror = null;
                     eventsSocket.onmessage = null;
-                    
+                    eventsSocket = null;
+                    setConnectionStatus(false);
+
                     // Try to re-establish the connection after interval
                     eventsSocketRetryAttempts++;
                     var retryInterval = eventsSocketRetryIntervalInMilliseconds * eventsSocketRetryAttempts;
@@ -179,6 +191,8 @@ const rootHtmlTemplate = `
         </script>
     </head>
     <body>
+        <div id="lastPopulation"></div>
+        <div id="connectionStatus"></div>
         <h1>Containers</h1>
         <div class="table" id="containers">
             <div class="heading">
