@@ -5,7 +5,7 @@ set -e
 go build
 
 sudo_run_prefix=
-if [ -z "$(groups | grep 'docker1')" ]; then
+if [ -z "$(groups | grep 'docker')" ]; then
 	sudo docker build -t ${USER}/ddash:latest .
 	sudo_run_prefix='sudo '
 else
