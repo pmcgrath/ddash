@@ -28,11 +28,20 @@ const rootHtmlTemplate = `
             .status.stopped { color: red; }
         </style>
         <script type="text/javascript">
-            var containerUrlPrefix = "http://" + window.location.host + "{{.ContainerPathPrefix}}";
-            var containersUrl = "http://" + window.location.host + "{{.ContainersPath}}";
-            var eventsUrl = "ws://" + window.location.host + "{{.SocketPath}}";
+            var scheme = "http", wsScheme = "ws";
+            if (window.location.protocol == "https") {
+                scheme = "https"; wsScheme = "wss";
+            }
+
+	    var containerUrlPrefix = scheme + "://" + window.location.host + "{{.ContainerPathPrefix}}";
+	    var containersUrl = scheme + "://" + window.location.host + "{{.ContainersPath}}";
+            var eventsUrl = wsScheme + "://" + window.location.host + "{{.SocketPath}}";
 
             var eventsSocket = null;
+            var eventsSocketRetryIntervalInMilliseconds = 2000;
+            var eventsSocketRetryMaxIntervalInMilliseconds = 5 * 60 * 1000; // 5 minutes
+            var eventsSocketRetryAttempts = 0;
+            var eventsSocketRetryAttempt = 0;
 
             function getContainerStatus(container) {
                 if (!container.State.Running) {
@@ -114,7 +123,7 @@ const rootHtmlTemplate = `
                 xhr.onreadystatechange = function() {
                     if (xhr.readyState == 4) {
                         if(xhr.status == 200 || xhr.status == 201) {
-                            data = JSON.parse(xhr.response);
+                            var data = JSON.parse(xhr.response);
                             completionFunc(data);
                         } else {
                             errorFunc(xhr.status);
@@ -129,18 +138,34 @@ const rootHtmlTemplate = `
             function rePopulateViews() {
                 getData(containersUrl, rePopulateContainersView, console.log);
             }
-            
-	    window.onload = function() {
-                rePopulateViews();
-               
+
+            function configureEventsSocket() {
+                console.log("Attempting to configure events socket for " + eventsUrl + " sequence " + eventsSocketRetryAttempts);
                 eventsSocket = new WebSocket(eventsUrl);
    
                 eventsSocket.onopen = function() {
                     console.log("WebSocket: Connected to " + eventsSocket.url);
+		    if (eventsSocketRetryAttempts > 0) {
+                        console.log("Repopulating views due to socket connection being reopened, attempt sequence " + eventsSocketRetryAttempts);
+                        rePopulateViews();
+                        eventsSocketRetryAttempts = 0;
+	            }
                 }
 
                 eventsSocket.onclose = function(e) {
                     console.log("WebSocket: Connection closed (" + e.code + ")");
+                    eventsSocket.onopen = null;
+                    eventsSocket.onclose = null;
+                    eventsSocket.onerror = null;
+                    eventsSocket.onmessage = null;
+                    
+                    // Try to re-establish the connection after interval
+                    eventsSocketRetryAttempts++;
+                    var retryInterval = eventsSocketRetryIntervalInMilliseconds * eventsSocketRetryAttempts;
+		    if (retryInterval > eventsSocketRetryMaxIntervalInMilliseconds) {
+			    retryInterval = eventsSocketRetryMaxIntervalInMilliseconds;
+                    }
+                    window.setTimeout(configureEventsSocket, retryInterval);
                 }
  
                 eventsSocket.onerror = function(e) {
@@ -151,6 +176,11 @@ const rootHtmlTemplate = `
                     console.log("WebSocket: Message received: " + e.data);
                     rePopulateViews(); // Lazy but plenty good here, don't have to deal with a lack of data and changed data
                 }
+            }
+
+            window.onload = function() {
+                rePopulateViews();
+                configureEventsSocket();
             }
         </script>
     </head>
@@ -170,7 +200,7 @@ const rootHtmlTemplate = `
             </div>
         </div>
         <div id="containerRows">
-	</div>
+        </div>
         <template id="containerTemplate">
             <div class="row">
                 <div class="cell"><a href="" class="id"></a></div>
