@@ -33,8 +33,8 @@ const rootHtmlTemplate = `
                 scheme = "https"; wsScheme = "wss";
             }
 
-	    var containerUrlPrefix = scheme + "://" + window.location.host + "{{.ContainerPathPrefix}}";
-	    var containersUrl = scheme + "://" + window.location.host + "{{.ContainersPath}}";
+            var containerUrlPrefix = scheme + "://" + window.location.host + "{{.ContainerPathPrefix}}";
+            var containersUrl = scheme + "://" + window.location.host + "{{.ContainersPath}}";
             var eventsUrl = wsScheme + "://" + window.location.host + "{{.SocketPath}}";
 
             var eventsSocket = null;
@@ -44,22 +44,18 @@ const rootHtmlTemplate = `
             var eventsSocketRetryAttempt = 0;
 
             function getContainerStatus(container) {
-                if (!container.State.Running) {
-                    return "stopped";
-                }
-                if (container.State.Paused) {
-                    return "paused";
-                }
+                if (!container.State.Running) { return "stopped"; }
+                if (container.State.Paused) { return "paused"; }
 
                 return "running";
             }
 
             function getTimestamp(dateString) {
-                    // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat
-                    var options = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" };
-                    var date = new Date(dateString);
-                    if (date.getFullYear() == 1) { return ""; }
-                    return date.toLocaleTimeString(navigator.language, options);
+                // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat
+                var options = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" };
+                var date = new Date(dateString);
+                if (date.getFullYear() == 1) { return ""; }
+                return date.toLocaleTimeString(navigator.language, options);
             }
 
             function addContainer(container) {
@@ -77,9 +73,7 @@ const rootHtmlTemplate = `
                 var ports = "";
                 for (var containerPort in container.NetworkSettings.Ports) {
                     var portSetting = container.NetworkSettings.Ports[containerPort];
-                    if (portSetting != null) {
-                        ports += portSetting[0].HostPort + "->"; 
-                    }
+                    if (portSetting != null) { ports += portSetting[0].HostPort + "->"; }
                     ports += containerPort + "<br/>" 
                 }
 
@@ -103,14 +97,14 @@ const rootHtmlTemplate = `
                 content.querySelector(".ports").innerHTML = ports;
                 content.querySelector(".volumes").innerHTML = volumes;
 
-                var containerRowsElement = document.getElementById("containerRows");
-                containerRowsElement.appendChild(content);
+                containersElement.appendChild(content);
             }
 
             function rePopulateContainersView(containers) {
-                var containerRowsElement = document.getElementById("containerRows");
-                while (containerRowsElement.firstChild) {
-                    containerRowsElement.removeChild(containerRowsElement.firstChild);
+                var containersElement = document.getElementById("containers");
+
+                while (containersElement.childElementCount > 1) {
+                    containersElement.removeChild(containersElement.lastElementChild);
                 }
 
                 for (var index = 0; index < containers.length; index++) {
@@ -145,11 +139,11 @@ const rootHtmlTemplate = `
    
                 eventsSocket.onopen = function() {
                     console.log("WebSocket: Connected to " + eventsSocket.url);
-		    if (eventsSocketRetryAttempts > 0) {
+                    if (eventsSocketRetryAttempts > 0) {
                         console.log("Repopulating views due to socket connection being reopened, attempt sequence " + eventsSocketRetryAttempts);
                         rePopulateViews();
                         eventsSocketRetryAttempts = 0;
-	            }
+                    }
                 }
 
                 eventsSocket.onclose = function(e) {
@@ -162,8 +156,8 @@ const rootHtmlTemplate = `
                     // Try to re-establish the connection after interval
                     eventsSocketRetryAttempts++;
                     var retryInterval = eventsSocketRetryIntervalInMilliseconds * eventsSocketRetryAttempts;
-		    if (retryInterval > eventsSocketRetryMaxIntervalInMilliseconds) {
-			    retryInterval = eventsSocketRetryMaxIntervalInMilliseconds;
+                    if (retryInterval > eventsSocketRetryMaxIntervalInMilliseconds) {
+                        retryInterval = eventsSocketRetryMaxIntervalInMilliseconds;
                     }
                     window.setTimeout(configureEventsSocket, retryInterval);
                 }
@@ -198,8 +192,6 @@ const rootHtmlTemplate = `
                 <div class="cell">Volumes From</div>
                 <div class="cell">Volumes</div>
             </div>
-        </div>
-        <div id="containerRows">
         </div>
         <template id="containerTemplate">
             <div class="row">
