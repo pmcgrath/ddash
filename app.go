@@ -47,15 +47,15 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	containerAsJsonData, err := json.MarshalIndent(container, "", "    ")
+	prettyJsonData, err := json.MarshalIndent(container, "", "    ")
 	if err != nil {
-		log.Printf("containerHandler: Convert to json data error for id: %s error: %s", id, err)
+		log.Printf("containerHandler: Convert to pretty json data error for id: %s error: %s", id, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, string(containerAsJsonData))
+	fmt.Fprintf(w, string(prettyJsonData))
 }
 
 func containersHandler(w http.ResponseWriter, r *http.Request) {
@@ -72,27 +72,15 @@ func containersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	containersAsJsonData, err := json.Marshal(containers)
+	prettyJsonData, err := json.MarshalIndent(containers, "", "    ")
 	if err != nil {
-		log.Printf("containersHandler: Convert to json data error: %s", err)
+		log.Printf("containersHandler: Convert to pretty json data error: %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	pageInfo := struct {
-		SocketPath       string
-		ContainersAsJson string
-	}{
-		"/events",
-		string(containersAsJsonData),
-	}
-
-	err = containersTemplate.Execute(w, pageInfo)
-	if err != nil {
-		log.Printf("containersHandler: Execute template error : %s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, string(prettyJsonData))
 }
 
 func eventsHandler(ws *websocket.Conn) {
@@ -102,9 +90,35 @@ func eventsHandler(ws *websocket.Conn) {
 	log.Printf("eventsHandler: Closing for %s\n", ws.Request().RemoteAddr)
 }
 
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		log.Printf("rootHandler: Unsupported method: %s", r.Method)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	pageInfo := struct {
+		ContainerPathPrefix string
+		ContainersPath      string
+		SocketPath          string
+	}{
+		"/container/",
+		"/containers",
+		"/events",
+	}
+
+	err := rootTemplate.Execute(w, pageInfo)
+	if err != nil {
+		log.Printf("rootHandler: Execute template error : %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func main() {
 	go eventDistr.Run(queryer)
 
+	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/containers", containersHandler)
 	http.HandleFunc("/containers/", containerHandler)
 	http.Handle("/events", websocket.Handler(eventsHandler))

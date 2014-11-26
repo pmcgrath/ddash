@@ -2,28 +2,18 @@ package main
 
 import (
 	"html/template"
-	"time"
 )
 
 var (
-	containersTemplate *template.Template
+	rootTemplate *template.Template
 )
 
 func init() {
-	containersTemplate = template.Must(template.New("containers").Funcs(templateFuncMap).Parse(containersHtmlTemplate))
-}
-
-var templateFuncMap = template.FuncMap{
-	"displayTimestamp": func(t time.Time) string {
-		if t.Year() == 1 {
-			return ""
-		}
-		return t.Format("Jan 2 2006 15:04:05")
-	},
+	rootTemplate = template.Must(template.New("root").Parse(rootHtmlTemplate))
 }
 
 // Could have used https://github.com/jteeuwen/go-bindata
-const containersHtmlTemplate = `
+const rootHtmlTemplate = `
 <html>
     <head>
         <title>Containers</title>
@@ -38,96 +28,126 @@ const containersHtmlTemplate = `
             .status.stopped { color: red; }
         </style>
         <script type="text/javascript">
-            var sock = null;
-            var uri = "ws://" + window.location.host + "{{.SocketPath}}";
-            var containers = JSON.parse('{{.ContainersAsJson}}');
+            var containerUrlPrefix = "http://" + window.location.host + "{{.ContainerPathPrefix}}";
+            var containersUrl = "http://" + window.location.host + "{{.ContainersPath}}";
+            var eventsUrl = "ws://" + window.location.host + "{{.SocketPath}}";
 
-            function getStatus(input) {
-                if (!input.State.Running) {
+            var eventsSocket = null;
+
+            function getContainerStatus(container) {
+                if (!container.State.Running) {
                     return "stopped";
                 }
-                if (input.State.Paused) {
+                if (container.State.Paused) {
                     return "paused";
                 }
 
                 return "running";
             }
 
-            function getTimestamp(input) {
+            function getTimestamp(dateString) {
                     // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat
                     var options = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" };
-                    var date = new Date(input);
+                    var date = new Date(dateString);
                     if (date.getFullYear() == 1) { return ""; }
                     return date.toLocaleTimeString(navigator.language, options);
             }
 
-            function populate() {
-                for (var index = 0; index < containers.length; index++) {
-                    var container = containers[index];
+            function addContainer(container) {
+                var shortId = container.Id.substring(0, 12);
+                var containerUrl = "/containers/" + container.Id;
+                var status = getContainerStatus(container);
+                var started = getTimestamp(container.State.StartedAt);
+                var finished = getTimestamp(container.State.FinishedAt);
 
-                    var shortId = container.Id.substring(0, 12);
-                    var containerUrl = "/containers/" + container.Id;
-                    var status = getStatus(container);
-                    var started = getTimestamp(container.State.StartedAt);
-                    var finished = getTimestamp(container.State.FinishedAt);
-
-                    var restartPolicy = container.HostConfig.RestartPolicy.Name;
-                    if (container.HostConfig.RestartPolicy.MaximumRetryCount > 0) {
-                        restartPolicy += " : " + container.HostConfig.RestartPolicy.MaximumRetryCount;
-                    }
-
-                    var ports = "";
-                    for (var containerPort in container.NetworkSettings.Ports) {
-                        var portSetting = container.NetworkSettings.Ports[containerPort];
-                        if (portSetting != null) {
-                            ports += portSetting[0].HostPort + "->"; 
-                        }
-                        ports += containerPort + "<br/>" 
-                    }
-
-                    var volumes = "";
-                    for (var containerPath in container.Volumes) {
-                        volumes += containerPath + " : " + container.Volumes[containerPath] + "<br/>" 
-                    }
-
-                    var containersElement = document.getElementById("containers");
-                    var template = document.querySelector("#containerTemplate");
-                    var content = document.importNode(template.content, true);
-                    content.querySelector(".id").href = containerUrl;
-                    content.querySelector(".id").innerText = shortId;
-                    content.querySelector(".name").innerText = container.Name;
-                    content.querySelector(".pid").innerText = container.State.Pid;
-                    content.querySelector(".pid").className += ' ' + status;
-                    content.querySelector(".started").innerText = started;
-                    content.querySelector(".finished").innerText = finished;
-                    content.querySelector(".restart-policy").innerText = restartPolicy;
-                    content.querySelector(".volumes-from").innerText = container.HostConfig.VolumesFrom;
-                    content.querySelector(".ports").innerHTML = ports;
-                    content.querySelector(".volumes").innerHTML = volumes;
-                    containersElement.appendChild(content);
+                var restartPolicy = container.HostConfig.RestartPolicy.Name;
+                if (container.HostConfig.RestartPolicy.MaximumRetryCount > 0) {
+                    restartPolicy += " : " + container.HostConfig.RestartPolicy.MaximumRetryCount;
                 }
+
+                var ports = "";
+                for (var containerPort in container.NetworkSettings.Ports) {
+                    var portSetting = container.NetworkSettings.Ports[containerPort];
+                    if (portSetting != null) {
+                        ports += portSetting[0].HostPort + "->"; 
+                    }
+                    ports += containerPort + "<br/>" 
+                }
+
+                var volumes = "";
+                for (var containerPath in container.Volumes) {
+                    volumes += containerPath + " : " + container.Volumes[containerPath] + "<br/>" 
+                }
+
+                var containersElement = document.getElementById("containers");
+                var template = document.querySelector("#containerTemplate");
+                var content = document.importNode(template.content, true);
+                content.querySelector(".id").href = containerUrl;
+                content.querySelector(".id").innerText = shortId;
+                content.querySelector(".name").innerText = container.Name;
+                content.querySelector(".pid").innerText = container.State.Pid;
+                content.querySelector(".pid").className += ' ' + status;
+                content.querySelector(".started").innerText = started;
+                content.querySelector(".finished").innerText = finished;
+                content.querySelector(".restart-policy").innerText = restartPolicy;
+                content.querySelector(".volumes-from").innerText = container.HostConfig.VolumesFrom;
+                content.querySelector(".ports").innerHTML = ports;
+                content.querySelector(".volumes").innerHTML = volumes;
+                containersElement.appendChild(content);
             }
 
-            window.onload = function() {
-                populate();
-               
-                sock = new WebSocket(uri);
-   
-                sock.onopen = function() {
-                    console.log("WebSocket: Connected to " + uri);
+            function rePopulateContainersView(containers) {
+                var containersElement = document.getElementById("containers");
+                while (containersElement.firstChild) {
+                    containersElement.removeChild(containersElement.firstChild);
                 }
 
-                sock.onclose = function(e) {
+                for (var index = 0; index < containers.length; index++) {
+                    addContainer(containers[index]);
+                }
+            }
+            
+            function getData(url, completionFunc, errorFunc) {
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4) {
+                        if(xhr.status == 200 || xhr.status == 201) {
+                            data = JSON.parse(xhr.response);
+                            completionFunc(data);
+                        } else {
+                            errorFunc(xhr.status);
+                        }
+                    }
+                };
+                xhr.open("GET", url);
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.send();
+            }
+
+            function rePopulateViews() {
+                getData(containersUrl, rePopulateContainersView, console.log);
+            }
+            
+	    window.onload = function() {
+                rePopulateViews();
+               
+                eventsSocket = new WebSocket(eventsUrl);
+   
+                eventsSocket.onopen = function() {
+                    console.log("WebSocket: Connected to " + eventsUrl);
+                }
+
+                eventsSocket.onclose = function(e) {
                     console.log("WebSocket: Connection closed (" + e.code + ")");
                 }
  
-                sock.onerror = function(e) {
+                eventsSocket.onerror = function(e) {
                     console.log("WebSocket: Connection error detected (" + e + ")");
                 }
 
-                sock.onmessage = function(e) {
+                eventsSocket.onmessage = function(e) {
                     console.log("WebSocket: Message received: " + e.data);
-                    window.location.reload(); // Lazy but plenty good here, don't have to deal with a lack of data and changed data
+                    rePopulateViews(); // Lazy but plenty good here, don't have to deal with a lack of data and changed data
                 }
             }
         </script>
