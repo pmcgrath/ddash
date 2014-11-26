@@ -93,13 +93,15 @@ const rootHtmlTemplate = `
                 content.querySelector(".volumes-from").innerText = container.HostConfig.VolumesFrom;
                 content.querySelector(".ports").innerHTML = ports;
                 content.querySelector(".volumes").innerHTML = volumes;
-                containersElement.appendChild(content);
+
+                var containerRowsElement = document.getElementById("containerRows");
+                containerRowsElement.appendChild(content);
             }
 
             function rePopulateContainersView(containers) {
-                var containersElement = document.getElementById("containers");
-                while (containersElement.firstChild) {
-                    containersElement.removeChild(containersElement.firstChild);
+                var containerRowsElement = document.getElementById("containerRows");
+                while (containerRowsElement.firstChild) {
+                    containerRowsElement.removeChild(containerRowsElement.firstChild);
                 }
 
                 for (var index = 0; index < containers.length; index++) {
@@ -134,7 +136,7 @@ const rootHtmlTemplate = `
                 eventsSocket = new WebSocket(eventsUrl);
    
                 eventsSocket.onopen = function() {
-                    console.log("WebSocket: Connected to " + eventsUrl);
+                    console.log("WebSocket: Connected to " + eventsSocket.url);
                 }
 
                 eventsSocket.onclose = function(e) {
@@ -167,6 +169,8 @@ const rootHtmlTemplate = `
                 <div class="cell">Volumes</div>
             </div>
         </div>
+        <div id="containerRows">
+	</div>
         <template id="containerTemplate">
             <div class="row">
                 <div class="cell"><a href="" class="id"></a></div>
