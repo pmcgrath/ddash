@@ -4,4 +4,5 @@ var (
 	commitHash      string
 	shortCommitHash string
 	buildDate       string
+	tag             string
 )
