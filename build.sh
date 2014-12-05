@@ -13,7 +13,7 @@ declare -r ld_flags="-X main.commitHash ${commit_hash} -X main.shortCommitHash $
 
 function clean() 
 {
-	[ -f ./ddash ] && rm ./ddash
+	go clean
 }
 
 function build()
