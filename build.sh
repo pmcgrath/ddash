@@ -1,4 +1,5 @@
 #!/bin/bash
+# Tried to do this with a make file but the scripting was just too painfull
 set -e
 #set -x
 
