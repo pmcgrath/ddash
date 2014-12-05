@@ -33,7 +33,8 @@ func main() {
 	http.Handle("/events", websocket.Handler(eventsHandler))
 
 	addr := fmt.Sprintf(":%d", *applicationPort)
-	log.Printf("Using %s\n", runtime.Version())
+	log.Printf("Using runtime %s\n", runtime.Version())
+	log.Printf("Commit = %s build @ %s Full commit = %s\n", shortCommitHash, buildDate, commitHash)
 	log.Printf("About to listen at %s", addr)
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
