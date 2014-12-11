@@ -36,7 +36,8 @@ function build-image()
 	echo -e "\t${sudo_run_prefix}docker run --name=ddash --detach=true --volume=/var/run/docker.sock:/var/run/docker.sock:ro --publish=8090:8090 ${USER}/ddash:latest"
 }
 
-if [ $# == 0 ]; 		then build; build-image; fi
+if [ $# == 0 ]; 		then echo -e "Use one of\n\t$0 all - build and then build-image\n\t$0 build - go build\n\t$0 build-image - build image, assumes build already done\n\t$0 clean - go clean"; fi
+if [ "$1" == "all" ]; 		then build; build-image; fi
 if [ "$1" == "build" ]; 	then build; fi
 if [ "$1" == "buildimage" ]; 	then build-image; fi
 if [ "$1" == "clean" ]; 	then clean; fi
