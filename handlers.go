@@ -21,7 +21,7 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 
 	found, container, err := getContainer(queryer, id)
 	if !found {
-		log.Printf("containerHandler: Container not found for id: %s", id, err)
+		log.Printf("containerHandler: Container not found for id: %s", id)
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}

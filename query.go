@@ -60,7 +60,7 @@ func getContainers(queryer dockerQueryer) (containers, error) {
 			return nil, fmt.Errorf(message)
 		}
 		if err != nil {
-			log.Printf("getContainers: Get container error for id: error: %s\n", id, err)
+			log.Printf("getContainers: Get container error for id: %s error: %s\n", id, err)
 			return nil, err
 		}
 
