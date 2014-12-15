@@ -5,11 +5,30 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 
 	"golang.org/x/net/websocket"
 )
 
+var (
+	containerPathRegexp *regexp.Regexp
+)
+
+func init() {
+	var err error
+	containerPathRegexp, err = regexp.Compile(`^/containers/\w{64}/?$`)
+	if err != nil {
+		panic(fmt.Sprintf("Container regex error : %s", err))
+	}
+}
+
 func containerHandler(w http.ResponseWriter, r *http.Request) {
+	if !containerPathRegexp.MatchString(r.URL.Path) {
+		log.Printf("containerHandler: Unsupported url: %s", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
 	if r.Method != "GET" {
 		log.Printf("containerHandler: Unsupported method: %s", r.Method)
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -43,6 +62,12 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func containersHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/containers" {
+		log.Printf("containersHandler: Unsupported url: %s", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
 	if r.Method != "GET" {
 		log.Printf("containersHandler: Unsupported method: %s", r.Method)
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -75,6 +100,12 @@ func eventsHandler(ws *websocket.Conn) {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		log.Printf("rootHandler: Unsupported url: %s", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
 	if r.Method != "GET" {
 		log.Printf("rootHandler: Unsupported method: %s", r.Method)
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -86,7 +117,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		ContainersPath      string
 		SocketPath          string
 	}{
-		"/container/",
+		"/containers/",
 		"/containers",
 		"/events",
 	}
