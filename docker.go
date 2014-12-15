@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	DOCKER_API_VERSION  = "1.15" // Based on "docker version" command at this time
+	DOCKER_API_VERSION  = "1.16" // Based on "docker version" command at this time
 	DOCKER_DEFAULT_HOST = "unix:///var/run/docker.sock"
-	DOCKER_VERSION      = "1.3.2" // Based on "docker version" command at this time
+	DOCKER_VERSION      = "1.4" // Based on "docker version" command at this time
 )
 
 type dockerQueryer func(string) (*http.Response, error)
