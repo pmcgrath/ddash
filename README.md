@@ -3,6 +3,7 @@
 ## Simple docker dashboard for viewing docker containers
 - Use the docker cli, this is just something I used to explore the docker api
 - Web app that listens on port 8090, showing a listing of containers (Probably should add images sometime)
+- App uses no package to interface with docker, just plain http access, so no models exist
 - App only does reads, surfaces no modification functionality
 - App listens for docker events
 - Clients establish a web socket connection to get docker update events

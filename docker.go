@@ -17,7 +17,6 @@ import (
 const (
 	DOCKER_API_VERSION  = "1.16" // Based on "docker version" command at this time
 	DOCKER_DEFAULT_HOST = "unix:///var/run/docker.sock"
-	DOCKER_VERSION      = "1.4" // Based on "docker version" command at this time
 )
 
 type dockerQueryer func(string) (*http.Response, error)
@@ -52,7 +51,7 @@ func execGet(dockerHost, url string) (*http.Response, error) {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "Docker-Client/"+DOCKER_VERSION)
+	req.Header.Set("User-Agent", "Docker-Client")
 	req.URL.Host = addr
 	req.URL.Scheme = scheme
 
