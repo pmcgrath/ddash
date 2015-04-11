@@ -21,9 +21,9 @@ type containers []container
 
 func getContainers(queryer dockerQueryer) (containers, error) {
 	log.Println("getContainers: About to get containers list")
-	containers_url := "/containers/json?all=1"
+	containersURL := "/containers/json?all=1"
 
-	resp, err := queryer(containers_url)
+	resp, err := queryer(containersURL)
 	if err != nil {
 		log.Printf("getContainers: exexGet error: %s\n", err)
 		return nil, err
@@ -73,9 +73,9 @@ func getContainers(queryer dockerQueryer) (containers, error) {
 
 func getContainer(queryer dockerQueryer, id string) (bool, container, error) {
 	log.Printf("getContainer: About to get for Id: %s\n", id)
-	container_url := fmt.Sprintf("containers/%s/json", id)
+	containerURL := fmt.Sprintf("containers/%s/json", id)
 
-	resp, err := queryer(container_url)
+	resp, err := queryer(containerURL)
 	if err != nil {
 		log.Printf("getContainer: queryer error for id: %s error: %s\n", id, err)
 		return false, nil, err
@@ -112,9 +112,9 @@ func getContainer(queryer dockerQueryer, id string) (bool, container, error) {
 
 func watchForEvents(queryer dockerQueryer, outgoing chan<- event) {
 	log.Println("watchForEvents: About to start watching")
-	events_url := "events"
+	eventsURL := "events"
 
-	resp, err := queryer(events_url)
+	resp, err := queryer(eventsURL)
 	if err != nil {
 		log.Fatalf("watchForEvents: execGet error: %s\n", err)
 	}

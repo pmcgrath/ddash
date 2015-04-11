@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	dockerHost      = flag.String("dockerhost", DOCKER_DEFAULT_HOST, "Docker host")
+	dockerHost      = flag.String("dockerhost", dockerDefaultHost, "Docker host")
 	applicationPort = flag.Int("port", 8090, "Port")
 
 	queryer dockerQueryer
@@ -36,6 +36,7 @@ func main() {
 	log.Printf("Using runtime %s\n", runtime.Version())
 	log.Printf("Commit = %s build @ %s Full commit = %s\n", shortCommitHash, buildDate, commitHash)
 	log.Printf("About to listen at %s", addr)
+
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatalf("Listen and server error : %s", err)

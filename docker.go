@@ -15,15 +15,15 @@ import (
 )
 
 const (
-	DOCKER_API_VERSION  = "1.16" // Based on "docker version" command at this time
-	DOCKER_DEFAULT_HOST = "unix:///var/run/docker.sock"
+	dockerAPIVersion  = "1.17" // Based on "docker version" command at this time
+	dockerDefaultHost = "unix:///var/run/docker.sock"
 )
 
 type dockerQueryer func(string) (*http.Response, error)
 
 func newDockerQueryer(host string) dockerQueryer {
 	return func(url string) (*http.Response, error) {
-		url = fmt.Sprintf("/v%s/%s", DOCKER_API_VERSION, url)
+		url = fmt.Sprintf("/v%s/%s", dockerAPIVersion, url)
 		return execGet(host, url)
 	}
 }

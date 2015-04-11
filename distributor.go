@@ -38,32 +38,32 @@ type eventDistributor struct {
 	Subscribers []*subscriber
 }
 
-func (self *eventDistributor) Register(connection *websocket.Conn) <-chan struct{} {
+func (ev *eventDistributor) Register(connection *websocket.Conn) <-chan struct{} {
 	disconnectedChannel := make(chan struct{})
 	subscriber := &subscriber{
 		Connection:          connection,
 		DisconnectedChannel: disconnectedChannel,
 	}
 
-	self.Mutex.Lock()
-	defer self.Mutex.Unlock()
-	self.Subscribers = append(self.Subscribers, subscriber)
+	ev.Mutex.Lock()
+	defer ev.Mutex.Unlock()
+	ev.Subscribers = append(ev.Subscribers, subscriber)
 
 	return subscriber.DisconnectedChannel
 }
 
-func (self *eventDistributor) Run(queryer dockerQueryer) {
+func (ev *eventDistributor) Run(queryer dockerQueryer) {
 	go watchForEvents(queryer, eventChannel)
 
 	for {
-		event := <-self.Incomming
-		log.Printf("Run: Got event %#v will attempt to publish to %d subscribers\n", event, len(self.Subscribers))
-		if len(self.Subscribers) == 0 {
+		event := <-ev.Incomming
+		log.Printf("Run: Got event %#v will attempt to publish to %d subscribers\n", event, len(ev.Subscribers))
+		if len(ev.Subscribers) == 0 {
 			continue
 		}
 
-		disconnectedSubscribers := make([]*subscriber, 0)
-		for _, subscriber := range self.Subscribers {
+		var disconnectedSubscribers []*subscriber
+		for _, subscriber := range ev.Subscribers {
 			log.Printf("Run: Sending event to %s\n", subscriber.Connection.Request().RemoteAddr)
 			if err := websocket.JSON.Send(subscriber.Connection, event); err != nil {
 				log.Printf("Run: Send error: %s\n", err)
@@ -75,9 +75,9 @@ func (self *eventDistributor) Run(queryer dockerQueryer) {
 			}
 		}
 
-		self.Mutex.Lock()
-		self.Subscribers = removeDisconnectedSubscribers(self.Subscribers, disconnectedSubscribers)
-		self.Mutex.Unlock()
+		ev.Mutex.Lock()
+		ev.Subscribers = removeDisconnectedSubscribers(ev.Subscribers, disconnectedSubscribers)
+		ev.Mutex.Unlock()
 	}
 }
 

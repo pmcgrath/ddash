@@ -9,11 +9,11 @@ var (
 )
 
 func init() {
-	rootTemplate = template.Must(template.New("root").Parse(rootHtmlTemplate))
+	rootTemplate = template.Must(template.New("root").Parse(rootHTMLTemplate))
 }
 
 // Could have used https://github.com/jteeuwen/go-bindata
-const rootHtmlTemplate = `
+const rootHTMLTemplate = `
 <html>
     <head>
         <title>Containers</title>

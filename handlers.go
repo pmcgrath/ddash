@@ -50,7 +50,7 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prettyJsonData, err := json.MarshalIndent(container, "", "    ")
+	prettyJSONData, err := json.MarshalIndent(container, "", "    ")
 	if err != nil {
 		log.Printf("containerHandler: Convert to pretty json data error for id: %s error: %s", id, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -58,7 +58,7 @@ func containerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, string(prettyJsonData))
+	fmt.Fprintf(w, string(prettyJSONData))
 }
 
 func containersHandler(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +81,7 @@ func containersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prettyJsonData, err := json.MarshalIndent(containers, "", "    ")
+	prettyJSONData, err := json.MarshalIndent(containers, "", "    ")
 	if err != nil {
 		log.Printf("containersHandler: Convert to pretty json data error: %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -89,7 +89,7 @@ func containersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, string(prettyJsonData))
+	fmt.Fprintf(w, string(prettyJSONData))
 }
 
 func eventsHandler(ws *websocket.Conn) {
