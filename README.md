@@ -1,4 +1,6 @@
 # Docker dashboard
+- I implemented this to allow me understand docker events and to surface the information, did not want to allow alterations
+- For a comore comprehensive solution that allows starting and stopping containers see https://github.com/crosbymichael/dockerui
 
 ## Simple docker dashboard for viewing docker containers
 - Use the docker cli, this is just something I used to explore the docker api

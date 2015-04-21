@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	dockerAPIVersion  = "1.17" // Based on "docker version" command at this time
+	dockerAPIVersion  = "1.18" // Based on "docker version" command at this time
 	dockerDefaultHost = "unix:///var/run/docker.sock"
 )
 
